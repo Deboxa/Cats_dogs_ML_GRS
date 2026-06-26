@@ -9,9 +9,11 @@ import {
   PreprocessPreview,
   PredictButton,
   ResultContainer,
-  LoadingText, GitHubLink, GitHubIcon,
+  LoadingText,
+  GitHubLink,
+  GitHubIcon,
 } from '../styles/StyledComponents';
-import {ClassificationModel} from '../classification/classification.ts';
+import {ClassificationModel, IMAGE_SIZE} from '../classification/classification';
 
 const HomePage: React.FC = () => {
   const [model, setModel] = useState<ClassificationModel | null>(null);
@@ -19,7 +21,7 @@ const HomePage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [preprocessedUrl, setPreprocessedUrl] = useState<string | null>(null);
-  const [prediction, setPrediction] = useState<{ dog: number; cat: number } | null>(null);
+  const [prediction, setPrediction] = useState<{ label: string; confidence: number } | null>(null);
   const [predicting, setPredicting] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,40 +41,25 @@ const HomePage: React.FC = () => {
         setLoading(false);
       }
     };
-    initModel().then(() => console.log("Model loaded"));
+    initModel().then(() => 1);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !model) return;
+
     setSelectedFile(file);
     setPrediction(null);
 
     const url = URL.createObjectURL(file);
     setOriginalUrl(url);
 
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 150;
-      canvas.height = 150;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, 150, 150);
-        // Convert to grayscale
-        const imageData = ctx.getImageData(0, 0, 150, 150);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          data[i] = gray;
-          data[i + 1] = gray;
-          data[i + 2] = gray;
-        }
-        ctx.putImageData(imageData, 0, 0);
-        setPreprocessedUrl(canvas.toDataURL());
-      }
-    };
-    img.src = url;
+    try {
+      const preprocessed = await model.getPreprocessedImageUrl(file);
+      setPreprocessedUrl(preprocessed);
+    } catch (error) {
+      console.error('Failed to generate preview:', error);
+    }
   };
 
   const handlePredict = async () => {
@@ -92,6 +79,11 @@ const HomePage: React.FC = () => {
 
   const isReady = model !== null && selectedFile !== null;
 
+  let resultText = '';
+  if (prediction) {
+    resultText = `It's a ${prediction.label} with ${(prediction.confidence * 100).toFixed(1)}% confidence`;
+  }
+
   return (
     <PageContainer>
       <GitHubLink
@@ -105,7 +97,7 @@ const HomePage: React.FC = () => {
         </GitHubIcon>
       </GitHubLink>
 
-      <Title>🐱 Cat or Dog? 🐶</Title>
+      <Title>Cat or Dog?</Title>
       <UploadBox>
         {loading ? (
           <LoadingText>Loading model…</LoadingText>
@@ -125,7 +117,7 @@ const HomePage: React.FC = () => {
             )}
             {preprocessedUrl && (
               <PreprocessPreview>
-                <strong>Preprocessed</strong>
+                <strong>Preprocessed (grayscale, {IMAGE_SIZE}x{IMAGE_SIZE})</strong>
                 <img src={preprocessedUrl} alt="Preprocessed"/>
               </PreprocessPreview>
             )}
@@ -137,8 +129,7 @@ const HomePage: React.FC = () => {
             </PredictButton>
             {prediction && (
               <ResultContainer>
-                <div>🐕 Dog: {(prediction.dog * 100).toFixed(1)}%</div>
-                <div>🐈 Cat: {(prediction.cat * 100).toFixed(1)}%</div>
+                {resultText}
               </ResultContainer>
             )}
           </>
