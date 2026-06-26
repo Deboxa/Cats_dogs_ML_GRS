@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 
-const IMAGE_SIZE = 100;
+export const IMAGE_SIZE = 100;
 const CHANNELS = 1;
 
 export class ClassificationModel {
@@ -22,38 +22,53 @@ export class ClassificationModel {
     }
   }
 
-  // resize, grayscale, normalize to [0,1]
+  private preprocessImageElement(img: HTMLImageElement): {
+    tensor: tf.Tensor4D;
+    canvas: HTMLCanvasElement;
+  } {
+    const canvas = document.createElement('canvas');
+    canvas.width = IMAGE_SIZE;
+    canvas.height = IMAGE_SIZE;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
+
+    const imageData = ctx.getImageData(0, 0, IMAGE_SIZE, IMAGE_SIZE);
+    const data = imageData.data;
+    const grayData = new Float32Array(IMAGE_SIZE * IMAGE_SIZE);
+
+    // Convert to grayscale and store normalized values
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      grayData[i / 4] = gray / 255.0;
+      data[i] = gray;
+      data[i + 1] = gray;
+      data[i + 2] = gray;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    const tensor = tf.tensor4d(grayData, [1, IMAGE_SIZE, IMAGE_SIZE, CHANNELS]);
+    return {tensor, canvas};
+  }
+
   async preprocessImage(file: File): Promise<tf.Tensor4D> {
+    const img = await this.loadImageFromFile(file);
+    const {tensor} = this.preprocessImageElement(img);
+    return tensor;
+  }
+
+  async getPreprocessedImageUrl(file: File): Promise<string> {
+    const img = await this.loadImageFromFile(file);
+    const {canvas} = this.preprocessImageElement(img);
+    return canvas.toDataURL('image/png');
+  }
+
+  private loadImageFromFile(file: File): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = IMAGE_SIZE;
-          canvas.height = IMAGE_SIZE;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
-          const imageData = ctx.getImageData(0, 0, IMAGE_SIZE, IMAGE_SIZE);
-          const data = imageData.data;
-
-          const grayData = new Float32Array(IMAGE_SIZE * IMAGE_SIZE);
-          for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            grayData[i / 4] = gray / 255.0; // Normalize to [0,1]
-          }
-
-          const tensor = tf.tensor4d(
-            grayData,
-            [1, IMAGE_SIZE, IMAGE_SIZE, CHANNELS]
-          );
-          resolve(tensor);
-        };
+        img.onload = () => resolve(img);
         img.onerror = reject;
         img.src = e.target?.result as string;
       };
@@ -62,16 +77,21 @@ export class ClassificationModel {
     });
   }
 
-  async predict(tensor: tf.Tensor4D): Promise<{ dog: number; cat: number }> {
+  async predict(tensor: tf.Tensor4D): Promise<{ label: string; confidence: number }> {
     if (!this.model) {
       throw new Error('Model not loaded. Call loadModel() first.');
     }
     const prediction = this.model.predict(tensor) as tf.Tensor;
     const data = await prediction.data();
+    const dogProb = data[0];
 
-    const [dog, cat] = Array.from(data);
     tensor.dispose();
     prediction.dispose();
-    return {dog, cat};
+
+    const isDog = dogProb >= 0.5;
+    return {
+      label: isDog ? 'dog' : 'cat',
+      confidence: isDog ? dogProb : 1 - dogProb
+    };
   }
 }

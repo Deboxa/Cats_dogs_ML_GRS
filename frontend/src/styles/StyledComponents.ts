@@ -59,7 +59,6 @@ export const ImagePreview = styled.div`
 `;
 
 export const PreprocessPreview = styled(ImagePreview)`
-    background: #ecf0f1;
     padding: 0.5rem;
     border-radius: 8px;
 `;
@@ -89,11 +88,12 @@ export const PredictButton = styled.button`
 export const ResultContainer = styled.div`
     margin-top: 1rem;
     padding: 1rem;
-    background: #ecf0f1;
     border-radius: 8px;
     width: 100%;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
+    font-weight: 500;
+    border: 2px solid #dfe6e9;
 `;
 
 export const LoadingText = styled.p`
