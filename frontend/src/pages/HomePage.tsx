@@ -13,7 +13,8 @@ import {
   GitHubLink,
   GitHubIcon,
 } from '../styles/StyledComponents';
-import {ClassificationModel, IMAGE_SIZE} from '../classification/classification';
+import {ClassificationModel} from '../classification/classification';
+import {baseUrl, IMAGE_SIZE} from "../constants.ts";
 
 const HomePage: React.FC = () => {
   const [model, setModel] = useState<ClassificationModel | null>(null);
@@ -93,7 +94,7 @@ const HomePage: React.FC = () => {
         aria-label="View source on GitHub"
       >
         <GitHubIcon viewBox="0 0 19 19">
-          <use href="/icons.svg#github-icon"/>
+          <use href={`${baseUrl}icons.svg#github-icon`}/>
         </GitHubIcon>
       </GitHubLink>
 

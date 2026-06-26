@@ -1,13 +1,13 @@
 import * as tf from '@tensorflow/tfjs';
+import {baseUrl, IMAGE_SIZE} from "../constants.ts";
 
-export const IMAGE_SIZE = 100;
 const CHANNELS = 1;
 
 export class ClassificationModel {
   private model: tf.LayersModel | null = null;
   private readonly modelUrl: string;
 
-  constructor(modelUrl: string = '/tfjs_model/model.json') {
+  constructor(modelUrl: string = `${baseUrl}tfjs_model/model.json`) {
     this.modelUrl = modelUrl;
   }
 
