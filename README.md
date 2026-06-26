@@ -3,7 +3,7 @@
 
  Dataset -> https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset
 
-|| Preprocessing and Analysis of results -- Russakov ||
+|| Preprocessing and Analysis of results -- Russak ||
  
 || Machine Learning -- Starchikov ||
 
